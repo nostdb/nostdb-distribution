@@ -43,10 +43,15 @@ async function main() {
       // Named, with the list. A user on an unpublished platform can build from source, and section
       // 25.3 publishes that route — so the refusal says so rather than only saying no.
       process.stderr.write(`${cause.code}: ${cause.message}\n`);
-      process.stderr.write(
-        "install from source instead:\n" +
-          `  cargo install --git https://github.com/nostdb/nostdb-cli --tag v${manifest.version} --locked nostdb\n`,
-      );
+      if (cause.buildable) {
+        // Section 25.3 publishes a source route, and it is the honest suggestion for a platform
+        // nobody has built a release for. It is *not* the honest suggestion for one the product does
+        // not compile on, which would fail for the same reason and waste a toolchain install.
+        process.stderr.write(
+          "install from source instead:\n" +
+            `  cargo install --git https://github.com/nostdb/nostdb-cli --tag v${manifest.version} --locked nostdb\n`,
+        );
+      }
       process.exit(EXIT.unavailable);
     }
     throw cause;

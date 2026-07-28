@@ -41,9 +41,6 @@ happened once, on a file anything with write access could have changed since.
 | macOS x64 | `x86_64-apple-darwin` |
 | Linux arm64 | `aarch64-unknown-linux-gnu` |
 | Linux x64 | `x86_64-unknown-linux-gnu` |
-| Windows arm64 | `aarch64-pc-windows-msvc` |
-| Windows x64 | `x86_64-pc-windows-msvc` |
-
 A platform not in that table is refused by name, with the list and the source-install route:
 
 ```bash
@@ -52,6 +49,18 @@ cargo install --git https://github.com/nostdb/nostdb-cli --tag <version> --locke
 
 Guessing the nearest target would run a binary built for another machine, and that fails somewhere
 unrelated to the cause.
+
+### Windows
+
+Windows is in the product contract — the daemon's endpoint contract specifies a named pipe for it —
+and `nostdb-server` implements only the Unix domain socket, so **nothing in NostDB compiles for
+Windows yet**. That was found by trying: the first release matrix built four targets and failed both
+Windows ones.
+
+A Windows user is told that rather than being told their platform is unpublished, and is **not**
+offered the source-install command, which would fail for the same reason and waste a toolchain
+install. Windows becomes a published target when the daemon has its named-pipe endpoint, which is
+`nostdb-server`'s work and not this repository's.
 
 ## Verify
 

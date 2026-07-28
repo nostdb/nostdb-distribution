@@ -13,7 +13,8 @@ import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
-import { TARGETS, resolveTarget, archiveName, UnsupportedPlatform } from "../lib/targets.mjs";
+import { TARGETS, resolveTarget, archiveName, UnsupportedPlatform, NOT_YET_BUILDABLE } from "../lib/targets.mjs";
+void NOT_YET_BUILDABLE;
 import { verifyArtifact, recordedFor, digestFile, ArtifactRefused } from "../lib/verify.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -48,7 +49,7 @@ async function refuses(what, code, run) {
 // ---- platform resolution, for every published target ----
 
 const keys = Object.keys(TARGETS);
-check("every published target is named", keys.length === 6, String(keys.length));
+check("every published target is named", keys.length === 4, String(keys.length));
 for (const key of keys) {
   const [platform, arch] = [key.slice(0, key.indexOf("-")), key.slice(key.indexOf("-") + 1)];
   const target = resolveTarget(platform, arch);
@@ -102,6 +103,29 @@ check(
   `this machine (${process.platform}-${process.arch}) is a published target`,
   Boolean(TARGETS[`${process.platform}-${process.arch}`]),
 );
+
+// Windows is intended and not yet buildable, and the refusal has to say which. Offering a source
+// install to a platform the product does not compile on would waste a toolchain install on a build
+// that fails for the same reason the release is missing.
+{
+  let refused;
+  try {
+    resolveTarget("win32", "x64");
+  } catch (cause) {
+    refused = cause;
+  }
+  check("Windows is refused", refused?.code === "DISTRIBUTION_UNSUPPORTED_PLATFORM");
+  check("and the refusal says why rather than listing targets", /named-pipe/.test(refused?.message ?? ""), refused?.message);
+  check("and does not claim a source install would work", refused?.buildable === false);
+
+  let other;
+  try {
+    resolveTarget("freebsd", "x64");
+  } catch (cause) {
+    other = cause;
+  }
+  check("a platform with no release does get the source route", other?.buildable === true);
+}
 
 // ---- checksums ----
 
