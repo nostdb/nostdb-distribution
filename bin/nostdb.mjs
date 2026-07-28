@@ -61,14 +61,15 @@ async function main() {
   if (!existsSync(binary)) {
     // Nothing is fetched here. A launcher that downloaded on first use would make the first run of
     // any command a network operation, and `nostdb check` on a plane would fail for a reason
-    // unrelated to the file it was checking. Fetching belongs to install, and says so.
+    // unrelated to the file it was checking. Fetching belongs to install, which `scripts/install.mjs`
+    // does — so the advice below names a command that exists.
     const archive = archiveName(manifest.version, target);
     refuse(
       "DISTRIBUTION_ARTIFACT_MISSING",
       `no native artifact for ${target.key} is installed.\n` +
         `  expected: ${binary}\n` +
         `  from:     ${archive}\n` +
-        "  run `npm rebuild nostdb`, or reinstall the package, to fetch and verify it",
+        "  run `npm rebuild nostdb` to fetch and verify it",
       EXIT.unavailable,
     );
   }

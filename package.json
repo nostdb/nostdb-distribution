@@ -10,6 +10,7 @@
   "files": [
     "bin/",
     "lib/",
+    "scripts/install.mjs",
     "checksums.json",
     "README.md",
     "LICENSE"
@@ -23,6 +24,7 @@
   },
   "homepage": "https://github.com/nostdb/nostdb",
   "scripts": {
+    "postinstall": "node scripts/install.mjs",
     "test": "node test/run.mjs"
   }
 }

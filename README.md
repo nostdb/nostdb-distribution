@@ -2,9 +2,16 @@
 
 The unscoped `nostdb` npm package: a thin launcher for the verified native CLI and Engine.
 
-**Status: not published.** No release exists, so no artifact exists to fetch and `checksums.json`
-records none. The launcher refuses by name and says what is missing rather than failing obscurely,
-and the suite covers platform resolution and checksum verification, which are testable without one.
+```bash
+npm install --save-dev nostdb
+npm install --global nostdb
+npx --yes --package=nostdb@0.1.0 nostdb help
+```
+
+Installing fetches the native archive for this platform from the release, verifies it against the
+digests this package ships, and unpacks it. A digest that does not match **fails the install**: a
+package that installed an unverified binary would be worse than one that failed, because the failure
+is visible and recoverable and the binary is not.
 
 ## What it does
 
@@ -26,6 +33,11 @@ artifact cannot also serve the digest that would accept it.
 
 A checksum fetched from beside the artifact verifies that the file arrived intact. It does not verify
 that it is the right file, which is the question worth asking.
+
+## Why the install verifies and the launcher verifies again
+
+They answer different questions. The install asks whether the right bytes arrived. The launcher asks
+whether they are still the bytes that arrived.
 
 ## Why verification happens on every run
 

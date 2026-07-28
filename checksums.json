@@ -1,6 +1,47 @@
 {
   "checksums_version": 1,
   "version": "0.1.0",
-  "note": "Digests of the artifacts release 0.1.0 publishes. Written by the release assembly and shipped inside the npm package, so an artifact and the digest that would accept it never travel by the same route. Empty until a release exists: nothing has been published, so there is nothing to record, and inventing a digest here would be a value nobody could reproduce.",
-  "artifacts": {}
+  "note": "Digests of the artifacts this release publishes, written by the release assembly. 4 targets, 4 of 8 entries attested: an entry is attested when the binary was run and reported the product and version it should, which a cross-compiled target cannot do.",
+  "artifacts": {
+    "nostdb-0.1.0-aarch64-apple-darwin.tar.gz": {
+      "bytes": 1378986,
+      "digest": "sha256:299915c2ea2c6408daa0aea13b20f576c334616c1cd18cba5dac66090df0a923",
+      "attested": true
+    },
+    "nostdb-0.1.0-aarch64-apple-darwin.tar.gz#nostdb": {
+      "bytes": 3511216,
+      "digest": "sha256:461b815311b039180182048407c3d03707e8fa79dc3192bfda20ce981bf8c2a2",
+      "attested": true
+    },
+    "nostdb-0.1.0-x86_64-apple-darwin.tar.gz": {
+      "bytes": 1507110,
+      "digest": "sha256:107cd3a1de24e5e41e0a1c5e6569ccd26fb97e6c3fa416c9d2e713f1f4920f07",
+      "attested": false
+    },
+    "nostdb-0.1.0-x86_64-apple-darwin.tar.gz#nostdb": {
+      "bytes": 3835448,
+      "digest": "sha256:635538b7a22a126cd558675428e8c45a6f35b6b7ee6dfca6976121eac26cf859",
+      "attested": false
+    },
+    "nostdb-0.1.0-aarch64-unknown-linux-gnu.tar.gz": {
+      "bytes": 1448281,
+      "digest": "sha256:392ec74309fdb3f95987da5306ce36f65bcd21bb43af6935ba7ac84528d85f4d",
+      "attested": false
+    },
+    "nostdb-0.1.0-aarch64-unknown-linux-gnu.tar.gz#nostdb": {
+      "bytes": 3834200,
+      "digest": "sha256:ee8497f4b37370a156433fb74831ea3aaf27ce424b70288c4cd20d29fa460e4e",
+      "attested": false
+    },
+    "nostdb-0.1.0-x86_64-unknown-linux-gnu.tar.gz": {
+      "bytes": 1566599,
+      "digest": "sha256:daead1f97dfd5e03b0fe6ba03813950a0f093f236836ba5b152bfb0ae7419019",
+      "attested": true
+    },
+    "nostdb-0.1.0-x86_64-unknown-linux-gnu.tar.gz#nostdb": {
+      "bytes": 4201392,
+      "digest": "sha256:980d0bc27924701e5487d80744c0ad7249202399e3922638d74c7f24c74c38b5",
+      "attested": true
+    }
+  }
 }
