@@ -7,7 +7,7 @@
 // What is *not* testable here is a real `npm install nostdb`, because nothing has been published.
 // That is named in the root progress record rather than papered over.
 
-import { mkdtempSync, writeFileSync, readFileSync, rmSync, mkdirSync, chmodSync } from "node:fs";
+import { mkdtempSync, writeFileSync, readFileSync, rmSync, mkdirSync, chmodSync, statSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
@@ -308,21 +308,20 @@ for (const [what, entry] of [
     );
   }
 
-  // The archive holds the binary, checked by looking inside it. The first release matrix shipped two
-  // 20-byte archives — an empty gzip stream — and reported success, because a pipeline reports its
-  // last command's status and `gzip` compressed `tar`'s failure perfectly well.
+  // The archive round-trips to the binary it was given. Checked by unpacking rather than by reading a
+  // listing: the assembler's own first two attempts at this both failed on the listing, one on a size
+  // threshold and one on a column whose position differs between BSD and GNU tar.
   {
     const key = `${process.platform}-${process.arch}`;
     const recorded = JSON.parse(readFileSync(join(first, `${key}.json`), "utf8"));
     const archive = Object.keys(recorded).find((name) => !name.includes("#"));
-    const listed = spawnSync("tar", ["-tzf", join(first, archive)], { encoding: "utf8" });
-    const entries = listed.stdout.split("\n").map((l) => l.trim()).filter(Boolean);
-    check("the archive holds exactly the binary", entries.length === 1 && entries[0] === "nostdb", entries.join(","));
-    check(
-      "and it is not an empty stream",
-      recorded[archive].bytes > 64,
-      `${recorded[archive].bytes} bytes`,
-    );
+    const unpackTo = join(scratch, "unpacked");
+    mkdirSync(unpackTo, { recursive: true });
+    const out = spawnSync("tar", ["-xzf", join(first, archive), "-C", unpackTo], { encoding: "utf8" });
+    check("the archive unpacks", out.status === 0, out.stderr);
+    const back = join(unpackTo, "nostdb");
+    check("to the binary it was given", (await digestFile(back)) === (await digestFile(stub)));
+    check("with its executable bit", (statSync(back).mode & 0o111) !== 0);
   }
 
   // Refusals. Each is a mistake somebody makes once.

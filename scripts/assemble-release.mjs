@@ -153,23 +153,39 @@ if (target.archive === "zip") {
   rmSync(uncompressed, { force: true });
 }
 
-// What was produced, checked by looking inside it. An assembler that never opened its own archive is
-// one that can ship an empty release, which is exactly what happened.
-const listed =
-  target.archive === "zip"
-    ? run("unzip", ["-Z1", archivePath]).stdout
-    : run("tar", ["-tzf", archivePath]).stdout;
-const entries = listed.split("\n").map((line) => line.trim()).filter(Boolean);
-if (entries.length !== 1 || entries[0] !== target.binary) {
-  fail(`the archive holds ${JSON.stringify(entries)} and should hold exactly ["${target.binary}"]`);
+// What was produced, checked by unpacking it and comparing the bytes.
+//
+// An assembler that never opened its own archive is one that can ship an empty release, which is
+// exactly what happened: two 20-byte archives went out reported as successes.
+//
+// Unpacked and digested rather than read from a listing. The first two attempts at this check both
+// failed on the listing — one guessed a size threshold and refused a legitimately small file, the
+// other parsed a column whose position differs between BSD and GNU tar. Extracting compares the thing
+// itself, works at any size, and is the same on every platform. It also proves the archive *round
+// trips*, which a listing cannot: the digest recorded for the binary inside is now a digest of
+// something demonstrably recoverable from the archive.
+const proof = join(out, `.proof-${key}`);
+rmSync(proof, { recursive: true, force: true });
+mkdirSync(proof, { recursive: true });
+if (target.archive === "zip") {
+  run("unzip", ["-q", "-o", archivePath, "-d", proof]);
+} else {
+  run("tar", ["-xzf", archivePath, "-C", proof]);
 }
-if (statSync(archivePath).size < 1024) {
-  // A real binary compresses to hundreds of kilobytes. Anything this small is an empty or truncated
-  // archive whose listing happened to look right.
-  fail(`${archivePath} is ${statSync(archivePath).size} bytes, which is not a packaged binary`);
+const unpacked = join(proof, target.binary);
+if (!existsSync(unpacked)) {
+  fail(`the archive does not unpack to ${target.binary}`);
 }
-
-rmSync(staging, { recursive: true, force: true });
+const digestOfFile = (path) => `sha256:${createHash("sha256").update(readFileSync(path)).digest("hex")}`;
+if (digestOfFile(unpacked) !== digestOfFile(binary)) {
+  fail(`${archivePath} unpacks to something other than the binary it was given`);
+}
+if ((statSync(unpacked).mode & 0o111) === 0) {
+  // A tar that lost the executable bit produces an install nothing can run, and the digest would
+  // faithfully describe a file nobody can start.
+  fail(`${archivePath} unpacks ${target.binary} without an executable bit`);
+}
+rmSync(proof, { recursive: true, force: true });
 
 const bytes = statSync(archivePath).size;
 const digestOf = (path) => `sha256:${createHash("sha256").update(readFileSync(path)).digest("hex")}`;
