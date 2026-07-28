@@ -1,0 +1,6 @@
+{
+  "checksums_version": 1,
+  "version": "0.1.0",
+  "note": "Digests of the artifacts release 0.1.0 publishes. Written by the release assembly and shipped inside the npm package, so an artifact and the digest that would accept it never travel by the same route. Empty until a release exists: nothing has been published, so there is nothing to record, and inventing a digest here would be a value nobody could reproduce.",
+  "artifacts": {}
+}

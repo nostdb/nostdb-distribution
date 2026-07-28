@@ -1,0 +1,39 @@
+# Independent verification for nostdb-distribution.
+#
+# The root contract requires every child repository to verify independently.
+# scripts/verify-repository.sh runs every check, so a local run and a CI run check exactly the same
+# invariants.
+#
+# No Node is installed here. The runner image ships one, and the verifier requires the version
+# `package.json` declares rather than trusting whatever is present — which keeps this workflow free of
+# a second action dependency for something the image already provides.
+#
+# Nothing here publishes. Publishing an npm package is a separate act from pushing a commit, it is
+# not reversible, and it needs its own authorization and its own workflow.
+#
+# Action dependency: actions/checkout, maintained by GitHub, MIT licensed, and pinned to the exact
+# commit of tag v7.0.1 rather than a floating major tag.
+
+name: verify
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Verify the repository
+        run: ./scripts/verify-repository.sh

@@ -1,0 +1,28 @@
+{
+  "name": "nostdb",
+  "version": "0.1.0",
+  "description": "Local-first property graph database for software environments. Thin launcher for the verified native CLI and Engine.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "bin": {
+    "nostdb": "bin/nostdb.mjs"
+  },
+  "files": [
+    "bin/",
+    "lib/",
+    "checksums.json",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nostdb/nostdb-distribution.git"
+  },
+  "homepage": "https://github.com/nostdb/nostdb",
+  "scripts": {
+    "test": "node test/run.mjs"
+  }
+}
