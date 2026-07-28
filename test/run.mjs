@@ -308,6 +308,23 @@ for (const [what, entry] of [
     );
   }
 
+  // The archive holds the binary, checked by looking inside it. The first release matrix shipped two
+  // 20-byte archives — an empty gzip stream — and reported success, because a pipeline reports its
+  // last command's status and `gzip` compressed `tar`'s failure perfectly well.
+  {
+    const key = `${process.platform}-${process.arch}`;
+    const recorded = JSON.parse(readFileSync(join(first, `${key}.json`), "utf8"));
+    const archive = Object.keys(recorded).find((name) => !name.includes("#"));
+    const listed = spawnSync("tar", ["-tzf", join(first, archive)], { encoding: "utf8" });
+    const entries = listed.stdout.split("\n").map((l) => l.trim()).filter(Boolean);
+    check("the archive holds exactly the binary", entries.length === 1 && entries[0] === "nostdb", entries.join(","));
+    check(
+      "and it is not an empty stream",
+      recorded[archive].bytes > 64,
+      `${recorded[archive].bytes} bytes`,
+    );
+  }
+
   // Refusals. Each is a mistake somebody makes once.
   for (const [what, args] of [
     ["no arguments", []],

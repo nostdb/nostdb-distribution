@@ -121,25 +121,54 @@ rmSync(archivePath, { force: true });
 // Reproducible flags where the tool has them: a fixed owner, a fixed mtime, and sorted entries. Two
 // assemblies of the same binary should produce the same archive, or a digest says two identical
 // releases are different releases.
-// `gzip -n` as a separate step rather than tar's `-z`, because gzip embeds a timestamp of its own and
-// the `GZIP=-n` environment variable that used to suppress it is deprecated and ignored by newer
-// versions. A flag passed to the program is the form that still works.
-const packed =
+// Two steps rather than a pipeline, and each status checked.
+//
+// A pipeline reports its *last* command's status. The first release matrix produced two 20-byte
+// archives — an empty gzip stream — and reported success, because `tar` had failed and `gzip`
+// compressed nothing perfectly well. The assembler then recorded a digest that faithfully described
+// an empty archive.
+//
+// The cause was a flag: `--uid`/`--gid` are BSD tar's, GNU tar has `--owner`/`--group`, so the same
+// command worked on macOS and failed on Linux. Only flags both accept are used now, and the
+// verification below is what makes the class of bug visible rather than this one instance.
+//
+// `gzip -n` as a separate program rather than tar's `-z`, because gzip embeds a timestamp and the
+// `GZIP=-n` variable that used to suppress it is deprecated and ignored by newer versions.
+const run = (program, args) => {
+  const done = spawnSync(program, args, { encoding: "utf8", env: { ...process.env, COPYFILE_DISABLE: "1" } });
+  if (done.status !== 0) {
+    fail(`${program} failed: ${done.stderr?.trim() || `exit ${done.status}`}`);
+  }
+  return done;
+};
+
+if (target.archive === "zip") {
+  run("zip", ["-X", "-q", "-j", archivePath, staged]);
+} else {
+  const uncompressed = `${archivePath.replace(/\.gz$/, "")}`;
+  rmSync(uncompressed, { force: true });
+  run("tar", ["--format=ustar", "--numeric-owner", "-cf", uncompressed, "-C", staging, target.binary]);
+  const compressed = run("sh", ["-c", 'gzip -n -9 -c "$1" > "$2"', "sh", uncompressed, archivePath]);
+  void compressed;
+  rmSync(uncompressed, { force: true });
+}
+
+// What was produced, checked by looking inside it. An assembler that never opened its own archive is
+// one that can ship an empty release, which is exactly what happened.
+const listed =
   target.archive === "zip"
-    ? spawnSync("zip", ["-X", "-q", "-j", archivePath, staged], { encoding: "utf8" })
-    : spawnSync(
-        "sh",
-        [
-          "-c",
-          'tar --format=ustar --numeric-owner --uid 0 --gid 0 -cf - -C "$1" "$2" | gzip -n -9 > "$3"',
-          "sh",
-          staging,
-          target.binary,
-          archivePath,
-        ],
-        { encoding: "utf8", env: { ...process.env, COPYFILE_DISABLE: "1" } },
-      );
-if (packed.status !== 0) fail(`packing failed: ${packed.stderr?.trim() ?? packed.status}`);
+    ? run("unzip", ["-Z1", archivePath]).stdout
+    : run("tar", ["-tzf", archivePath]).stdout;
+const entries = listed.split("\n").map((line) => line.trim()).filter(Boolean);
+if (entries.length !== 1 || entries[0] !== target.binary) {
+  fail(`the archive holds ${JSON.stringify(entries)} and should hold exactly ["${target.binary}"]`);
+}
+if (statSync(archivePath).size < 1024) {
+  // A real binary compresses to hundreds of kilobytes. Anything this small is an empty or truncated
+  // archive whose listing happened to look right.
+  fail(`${archivePath} is ${statSync(archivePath).size} bytes, which is not a packaged binary`);
+}
+
 rmSync(staging, { recursive: true, force: true });
 
 const bytes = statSync(archivePath).size;
