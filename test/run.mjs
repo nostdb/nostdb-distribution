@@ -7,7 +7,7 @@
 // What is *not* testable here is a real `npm install nostdb`, because nothing has been published.
 // That is named in the root progress record rather than papered over.
 
-import { mkdtempSync, writeFileSync, rmSync, mkdirSync } from "node:fs";
+import { mkdtempSync, writeFileSync, readFileSync, rmSync, mkdirSync, chmodSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
@@ -203,6 +203,106 @@ for (const [what, entry] of [
   const shipped = JSON.parse(await import("node:fs/promises").then((fs) => fs.readFile(join(root, "checksums.json"), "utf8")));
   check("the shipped checksums state a version", shipped.checksums_version === 1);
   check("and an artifacts object", typeof shipped.artifacts === "object" && shipped.artifacts !== null);
+}
+
+// ---- release assembly ----
+
+// Assembled from a stub rather than the Engine, because the Engine is not available here and what is
+// under test is the packaging: the archive's shape, the digests recorded beside it, and whether two
+// runs of the same input produce the same bytes.
+{
+  // The stub answers `--version --json`, because the assembler attests a native binary before
+  // packaging it and refuses one that does not — which is the assembler working, and was how this
+  // check first failed.
+  //
+  // What attestation verifies is the *report*, not the implementation. A stub that reports correctly
+  // is indistinguishable from the Engine by that check, and that is the honest limit of it: it catches
+  // packaging the wrong program, not packaging a program that lies.
+  const stub = join(scratch, "nostdb");
+  const version = JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version;
+  writeFileSync(
+    stub,
+    "#!/bin/sh\n" +
+      'if [ "$1" = "--version" ]; then\n' +
+      `  echo '{"product":"nostdb","engine_version":"${version}",` +
+      '"nost_language_versions":[2],"nostdb_format_versions":[1],"settings_versions":[1],' +
+      '"catalog_versions":[1],"query_subset_versions":[1]}\'\n' +
+      "  exit 0\nfi\nexit 7\n",
+  );
+  chmodSync(stub, 0o755);
+  const assemble = (out, target = `${process.platform}-${process.arch}`) =>
+    spawnSync(
+      process.execPath,
+      [join(root, "scripts", "assemble-release.mjs"), "--binary", stub, "--target", target, "--out", out],
+      { encoding: "utf8" },
+    );
+
+  const first = join(scratch, "rel-1");
+  const one = assemble(first);
+  check("an archive assembles", one.status === 0, one.stderr);
+
+  if (one.status === 0) {
+    const key = `${process.platform}-${process.arch}`;
+    const recorded = JSON.parse(readFileSync(join(first, `${key}.json`), "utf8"));
+    const names = Object.keys(recorded);
+    check("two digests are recorded per target", names.length === 2, names.join(", "));
+    check(
+      "one for the archive and one for the binary inside it",
+      names.some((name) => !name.includes("#")) && names.some((name) => name.includes("#")),
+      names.join(", "),
+    );
+    for (const [name, entry] of Object.entries(recorded)) {
+      check(`${name} records a well-formed digest`, /^sha256:[0-9a-f]{64}$/.test(entry.digest), entry.digest);
+      check(`${name} records a positive byte count`, Number.isInteger(entry.bytes) && entry.bytes > 0);
+      // A stub is not the Engine, so nothing attested it. The flag says which, because a
+      // cross-assembled archive carries one fewer check than a native one and a reader should know.
+      check(`${name} says whether it was attested`, typeof entry.attested === "boolean");
+    }
+    // And the launcher's verification accepts what the assembly recorded, which is the join between
+    // the two halves: a digest the assembler wrote and the launcher rejected would be two
+    // implementations of one format.
+    const inside = names.find((name) => name.includes("#"));
+    check(
+      "what the assembly recorded is what the launcher verifies",
+      (await verifyArtifact(stub, recorded[inside])) === recorded[inside].digest,
+    );
+
+    // Reproducible. Without this a digest says two identical releases are different releases — which
+    // is what this check found the first time it ran, when the staged file's modification time and
+    // gzip's own timestamp were both leaking into the archive.
+    const second = join(scratch, "rel-2");
+    const two = assemble(second);
+    check("a second assembly succeeds", two.status === 0, two.stderr);
+    const digestOfArchive = (dir) => {
+      const entries = JSON.parse(readFileSync(join(dir, `${key}.json`), "utf8"));
+      return entries[Object.keys(entries).find((name) => !name.includes("#"))].digest;
+    };
+    check(
+      "the same binary assembles to the same archive digest",
+      digestOfArchive(first) === digestOfArchive(second),
+      `${digestOfArchive(first)} then ${digestOfArchive(second)}`,
+    );
+  }
+
+  // Refusals. Each is a mistake somebody makes once.
+  for (const [what, args] of [
+    ["no arguments", []],
+    ["an unpublished target", ["--binary", stub, "--target", "plan9-mips"]],
+    ["a binary that is not there", ["--binary", join(scratch, "absent"), "--target", `${process.platform}-${process.arch}`]],
+  ]) {
+    const run = spawnSync(process.execPath, [join(root, "scripts", "assemble-release.mjs"), ...args], {
+      encoding: "utf8",
+    });
+    check(`assembly refuses ${what}`, run.status === 2, `exit ${run.status}`);
+    check(`and names itself doing so for ${what}`, run.stderr.includes("ASSEMBLY_REFUSED"), run.stderr);
+  }
+
+  // Nothing here publishes, and nothing reaches a network. Checked against the script rather than
+  // trusted, because this is the one file in the repository that would ever want to.
+  const source = readFileSync(join(root, "scripts", "assemble-release.mjs"), "utf8");
+  for (const forbidden of ["npm publish", "gh release", "fetch(", "https://registry"]) {
+    check(`assembly does not ${forbidden.trim()}`, !source.includes(forbidden));
+  }
 }
 
 rmSync(scratch, { recursive: true, force: true });

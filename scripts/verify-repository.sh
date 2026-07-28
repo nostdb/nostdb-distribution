@@ -7,7 +7,8 @@ set -eu
 cd "$(dirname "$0")/.."
 
 for required in README.md AGENTS.md CLAUDE.md LICENSE package.json checksums.json \
-    bin/nostdb.mjs lib/targets.mjs lib/verify.mjs test/run.mjs; do
+    bin/nostdb.mjs lib/targets.mjs lib/verify.mjs test/run.mjs \
+    scripts/assemble-release.mjs; do
   [ -e "$required" ] || { echo "missing required file: $required" >&2; exit 1; }
 done
 
@@ -80,6 +81,7 @@ node --check bin/nostdb.mjs
 node --check lib/targets.mjs
 node --check lib/verify.mjs
 node --check test/run.mjs
+node --check scripts/assemble-release.mjs
 
 # The published version and the checksums document must agree, or the launcher would look up an
 # archive name the release never wrote.
