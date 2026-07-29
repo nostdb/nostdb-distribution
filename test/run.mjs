@@ -7,7 +7,7 @@
 // What is *not* testable here is a real `npm install nostdb`, because nothing has been published.
 // That is named in the root progress record rather than papered over.
 
-import { mkdtempSync, writeFileSync, readFileSync, rmSync, mkdirSync, chmodSync, statSync, existsSync } from "node:fs";
+import { mkdtempSync, writeFileSync, readFileSync, rmSync, mkdirSync, chmodSync, statSync, existsSync, readdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
@@ -264,6 +264,68 @@ for (const [what, entry] of [
   const first = join(scratch, "rel-1");
   const one = assemble(first);
   check("an archive assembles", one.status === 0, one.stderr);
+
+  // A bundled provider, which `docs/PRD.md` section 17.5 requires in an official distribution.
+  //
+  // Until it was passed, every release shipped one program — so every published install refused every
+  // plugin install and every GitHub link, and the CLI's own `PLUGIN_REQUIRED` recommendation could not
+  // be followed from anything a user could install.
+  {
+    const providerStub = join(scratch, "nostdb-provider-github");
+    writeFileSync(providerStub, "#!/bin/sh\nexit 0\n");
+    chmodSync(providerStub, 0o755);
+    const key = `${process.platform}-${process.arch}`;
+    const bundle = (out) =>
+      spawnSync(
+        process.execPath,
+        [
+          join(root, "scripts", "assemble-release.mjs"),
+          "--binary", stub, "--target", key, "--provider", providerStub, "--out", out,
+        ],
+        { encoding: "utf8" },
+      );
+
+    const first = join(scratch, "bundle-1");
+    const one = bundle(first);
+    check("an archive assembles with a bundled provider", one.status === 0, one.stderr);
+    if (one.status === 0) {
+      const recorded = JSON.parse(readFileSync(join(first, `${key}.json`), "utf8"));
+      const names = Object.keys(recorded);
+      check(
+        "the archive and both programs are digested",
+        names.length === 3,
+        names.join(", "),
+      );
+      const member = names.find((name) => name.endsWith("#nostdb-provider-github"));
+      check("the provider is digested under the name the engine looks for", Boolean(member), names.join(", "));
+      if (member) {
+        // Named exactly, because the CLI finds the provider beside itself by this file name. An
+        // archive shipping it under another name unpacks something the engine cannot see, and the
+        // digest would faithfully describe it.
+        check(
+          "and the launcher's verification accepts it",
+          (await verifyArtifact(providerStub, recorded[member])) === recorded[member].digest,
+        );
+        check(
+          "attested is false for a program nothing ran",
+          recorded[member].attested === false,
+          JSON.stringify(recorded[member]),
+        );
+      }
+      // Reproducible with two members: the entry order must not depend on insertion order.
+      const second = join(scratch, "bundle-2");
+      const two = bundle(second);
+      const digestOfArchiveIn = (dir) => {
+        const name = readdirSync(dir).find((file) => file.endsWith(".tar.gz") || file.endsWith(".zip"));
+        return createHash("sha256").update(readFileSync(join(dir, name))).digest("hex");
+      };
+      check(
+        "two bundled assemblies produce the same archive",
+        two.status === 0 && digestOfArchiveIn(first) === digestOfArchiveIn(second),
+        two.stderr,
+      );
+    }
+  }
 
   // `--version` names the release, so a release can be assembled before this package is bumped to it.
   // Reading the version from `package.json` alone made every release after the first impossible: this

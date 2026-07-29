@@ -12,7 +12,13 @@
 // not reversible, and each needs its own authorization. Nothing here reaches a network.
 //
 // Usage:
-//   node scripts/assemble-release.mjs --binary PATH --target KEY [--out DIR]
+//   node scripts/assemble-release.mjs --binary PATH --target KEY [--provider PATH] [--out DIR]
+//
+// `--provider` bundles the GitHub provider in the same archive. `docs/PRD.md` section 17.5 requires it
+// to be "bundled at a compatible version in official distributions", and until it was passed here the
+// releases shipped one program — so every published install refused every plugin install and every
+// GitHub link. It is optional so a release can still be assembled without one, and what an archive
+// contains is then visible in its recorded digests rather than assumed.
 //
 // The archive it writes and the digest it records are what the launcher will verify, so the two are
 // produced by the same run: a digest computed separately from the archive is a digest of something
@@ -52,14 +58,18 @@ const binary = option("binary");
 const key = option("target");
 const out = option("out") ?? join(root, "dist");
 const asked = option("version");
+const provider = option("provider");
 
 if (!binary || !key) {
-  fail("usage: assemble-release.mjs --binary PATH --target KEY [--version V] [--out DIR]");
+  fail(
+    "usage: assemble-release.mjs --binary PATH --target KEY [--provider PATH] [--version V] [--out DIR]",
+  );
 }
 if (!TARGETS[key]) {
   fail(`\`${key}\` is not a published target; they are ${Object.keys(TARGETS).sort().join(", ")}`);
 }
 if (!existsSync(binary)) fail(`${binary} is not there`);
+if (provider && !existsSync(provider)) fail(`${provider} is not there`);
 
 const target = resolveTarget(key.slice(0, key.indexOf("-")), key.slice(key.indexOf("-") + 1));
 
@@ -109,24 +119,34 @@ if (key === native) {
   process.stderr.write(`not attested: ${key} is not ${native}, so this binary was not run\n`);
 }
 
-mkdirSync(out, { recursive: true });
-const staging = join(out, `.staging-${key}`);
-rmSync(staging, { recursive: true, force: true });
-mkdirSync(staging, { recursive: true });
-const staged = join(staging, target.binary);
-copyFileSync(binary, staged);
-// Executable in the archive, because a tar that lost the bit produces an install nothing can run.
-chmodSync(staged, 0o755);
-
-// A fixed modification time, because an archive records one and the staged copy's is whenever this
-// ran. Without it two assemblies of the same binary produce different archives, and a digest then
-// says two identical releases are different releases — which is exactly what the reproducibility
-// check found.
+// A fixed modification time, because an archive records one and a staged copy's is whenever this ran.
+// Without it two assemblies of the same binary produce different archives, and a digest then says two
+// identical releases are different releases — which is exactly what the reproducibility check found.
 //
 // The value is arbitrary and therefore stated: the first second of 2020, in UTC. What matters is that
 // it does not move, not which instant it is.
 const FIXED_MTIME = new Date("2020-01-01T00:00:00Z");
-utimesSync(staged, FIXED_MTIME, FIXED_MTIME);
+
+mkdirSync(out, { recursive: true });
+const staging = join(out, `.staging-${key}`);
+rmSync(staging, { recursive: true, force: true });
+mkdirSync(staging, { recursive: true });
+// Every program this archive carries, as `name -> the file it was built from`.
+//
+// The provider's name is fixed rather than taken from its path, because the CLI looks for it beside
+// itself by that exact name. An archive that shipped it under another name would unpack something the
+// engine cannot find, and the digests would faithfully describe it.
+const PROVIDER_NAME = `nostdb-provider-github${target.binary.endsWith(".exe") ? ".exe" : ""}`;
+const programs = new Map([[target.binary, binary]]);
+if (provider) programs.set(PROVIDER_NAME, provider);
+
+for (const [name, from] of programs) {
+  const staged = join(staging, name);
+  copyFileSync(from, staged);
+  // Executable in the archive, because a tar that lost the bit produces an install nothing can run.
+  chmodSync(staged, 0o755);
+  utimesSync(staged, FIXED_MTIME, FIXED_MTIME);
+}
 
 const archivePath = join(out, archive);
 rmSync(archivePath, { force: true });
@@ -155,12 +175,15 @@ const run = (program, args) => {
   return done;
 };
 
+// Sorted, so the archive's entry order does not depend on insertion order. Two assemblies of the same
+// inputs must produce the same bytes.
+const members = [...programs.keys()].sort();
 if (target.archive === "zip") {
-  run("zip", ["-X", "-q", "-j", archivePath, staged]);
+  run("zip", ["-X", "-q", "-j", archivePath, ...members.map((name) => join(staging, name))]);
 } else {
   const uncompressed = `${archivePath.replace(/\.gz$/, "")}`;
   rmSync(uncompressed, { force: true });
-  run("tar", ["--format=ustar", "--numeric-owner", "-cf", uncompressed, "-C", staging, target.binary]);
+  run("tar", ["--format=ustar", "--numeric-owner", "-cf", uncompressed, "-C", staging, ...members]);
   const compressed = run("sh", ["-c", 'gzip -n -9 -c "$1" > "$2"', "sh", uncompressed, archivePath]);
   void compressed;
   rmSync(uncompressed, { force: true });
@@ -185,31 +208,39 @@ if (target.archive === "zip") {
 } else {
   run("tar", ["-xzf", archivePath, "-C", proof]);
 }
-const unpacked = join(proof, target.binary);
-if (!existsSync(unpacked)) {
-  fail(`the archive does not unpack to ${target.binary}`);
-}
 const digestOfFile = (path) => `sha256:${createHash("sha256").update(readFileSync(path)).digest("hex")}`;
-if (digestOfFile(unpacked) !== digestOfFile(binary)) {
-  fail(`${archivePath} unpacks to something other than the binary it was given`);
-}
-if ((statSync(unpacked).mode & 0o111) === 0) {
-  // A tar that lost the executable bit produces an install nothing can run, and the digest would
-  // faithfully describe a file nobody can start.
-  fail(`${archivePath} unpacks ${target.binary} without an executable bit`);
+for (const [name, from] of programs) {
+  const unpacked = join(proof, name);
+  if (!existsSync(unpacked)) {
+    fail(`the archive does not unpack to ${name}`);
+  }
+  if (digestOfFile(unpacked) !== digestOfFile(from)) {
+    fail(`${archivePath} unpacks ${name} as something other than the file it was given`);
+  }
+  if ((statSync(unpacked).mode & 0o111) === 0) {
+    // A tar that lost the executable bit produces an install nothing can run, and the digest would
+    // faithfully describe a file nobody can start.
+    fail(`${archivePath} unpacks ${name} without an executable bit`);
+  }
 }
 rmSync(proof, { recursive: true, force: true });
 
 const bytes = statSync(archivePath).size;
 const digestOf = (path) => `sha256:${createHash("sha256").update(readFileSync(path)).digest("hex")}`;
 
-// Two entries per target, and both matter. The archive digest is what a Homebrew formula and a
-// release page verify; the binary digest is what the launcher verifies after unpacking, because by
-// then the archive is gone and the file on disk is what runs.
-const entry = {
-  [archive]: { bytes, digest: digestOf(archivePath), attested },
-  [`${archive}#${target.binary}`]: { bytes: statSync(binary).size, digest: digestOf(binary), attested },
-};
+// One entry for the archive and one per program inside it, and all of them matter. The archive digest
+// is what a Homebrew formula and a release page verify; a program's digest is what the launcher
+// verifies after unpacking, because by then the archive is gone and the file on disk is what runs.
+const entry = { [archive]: { bytes, digest: digestOf(archivePath), attested } };
+for (const [name, from] of programs) {
+  // Attested is claimed only for the program that was run. The provider is packaged and digested and
+  // never started here, so saying otherwise would claim a check nothing performed.
+  entry[`${archive}#${name}`] = {
+    bytes: statSync(from).size,
+    digest: digestOf(from),
+    attested: name === target.binary ? attested : false,
+  };
+}
 
 const record = join(out, `${key}.json`);
 writeFileSync(record, `${JSON.stringify(entry, null, 2)}\n`);
