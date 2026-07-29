@@ -1,6 +1,6 @@
 {
   "name": "nostdb",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Local-first property graph database for software environments. Thin launcher for the verified native CLI and Engine.",
   "license": "Apache-2.0",
   "type": "module",
