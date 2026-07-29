@@ -51,9 +51,10 @@ function option(name) {
 const binary = option("binary");
 const key = option("target");
 const out = option("out") ?? join(root, "dist");
+const asked = option("version");
 
 if (!binary || !key) {
-  fail("usage: assemble-release.mjs --binary PATH --target KEY [--out DIR]");
+  fail("usage: assemble-release.mjs --binary PATH --target KEY [--version V] [--out DIR]");
 }
 if (!TARGETS[key]) {
   fail(`\`${key}\` is not a published target; they are ${Object.keys(TARGETS).sort().join(", ")}`);
@@ -61,7 +62,19 @@ if (!TARGETS[key]) {
 if (!existsSync(binary)) fail(`${binary} is not there`);
 
 const target = resolveTarget(key.slice(0, key.indexOf("-")), key.slice(key.indexOf("-") + 1));
-const version = JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version;
+
+// The version being released, which is this package's own only when nobody said otherwise.
+//
+// `--version` exists because reading it from `package.json` made every release after the first
+// impossible. This package's version must match the `checksums.json` it ships — its verifier
+// requires it — and `checksums.json` is written from the digests this script produces. So the
+// launcher could not be bumped until the archives existed, and the archives could not be assembled
+// until it was. 0.1.0 hid it by being the version the launcher started at.
+//
+// What is attested does not weaken. The binary must still report the version its archive is named
+// for; the only change is who says which version that is. A release names it once, and that name is
+// gated against the crate before anything builds.
+const version = asked ?? JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version;
 const archive = archiveName(version, target);
 
 // The binary is verified to be the product before it is packaged. An assembler that packaged whatever
@@ -84,7 +97,7 @@ if (key === native) {
   }
   if (report.product !== "nostdb") fail(`${binary} reports product ${report.product}`);
   if (report.engine_version !== version) {
-    fail(`${binary} reports ${report.engine_version} and this package is ${version}`);
+    fail(`${binary} reports ${report.engine_version} and this release is ${version}`);
   }
   // Section 25.3: every route reports compatible contract data. An archive whose binary reported no
   // contracts would satisfy a version check and tell a caller nothing.

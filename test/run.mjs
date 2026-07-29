@@ -7,7 +7,7 @@
 // What is *not* testable here is a real `npm install nostdb`, because nothing has been published.
 // That is named in the root progress record rather than papered over.
 
-import { mkdtempSync, writeFileSync, readFileSync, rmSync, mkdirSync, chmodSync, statSync } from "node:fs";
+import { mkdtempSync, writeFileSync, readFileSync, rmSync, mkdirSync, chmodSync, statSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
@@ -264,6 +264,54 @@ for (const [what, entry] of [
   const first = join(scratch, "rel-1");
   const one = assemble(first);
   check("an archive assembles", one.status === 0, one.stderr);
+
+  // `--version` names the release, so a release can be assembled before this package is bumped to it.
+  // Reading the version from `package.json` alone made every release after the first impossible: this
+  // package must match the `checksums.json` it ships, and those digests are what an assembly writes.
+  {
+    const ahead = join(scratch, "rel-ahead");
+    const named = spawnSync(
+      process.execPath,
+      [
+        join(root, "scripts", "assemble-release.mjs"),
+        "--binary", stub, "--target", `${process.platform}-${process.arch}`,
+        "--version", "9.9.9", "--out", ahead,
+      ],
+      { encoding: "utf8" },
+    );
+    // The stub reports this package's version, so a release named 9.9.9 must be refused. That is the
+    // attestation still holding: what changed is who says which version is being released, not
+    // whether the binary has to agree with it.
+    check(
+      "a binary that does not report the named version is refused",
+      named.status === 2 && named.stderr.includes("ASSEMBLY_REFUSED"),
+      named.stderr,
+    );
+    check(
+      "and the refusal names the release rather than the package",
+      named.stderr.includes("this release is 9.9.9"),
+      named.stderr,
+    );
+  }
+  {
+    // The agreeing case: the same version, passed explicitly rather than read.
+    const told = join(scratch, "rel-told");
+    const named = spawnSync(
+      process.execPath,
+      [
+        join(root, "scripts", "assemble-release.mjs"),
+        "--binary", stub, "--target", `${process.platform}-${process.arch}`,
+        "--version", version, "--out", told,
+      ],
+      { encoding: "utf8" },
+    );
+    check("a named version the binary reports assembles", named.status === 0, named.stderr);
+    check(
+      "and it writes the archive that version is named for",
+      existsSync(join(told, `nostdb-${version}-${TARGETS[`${process.platform}-${process.arch}`].triple}.tar.gz`)),
+      named.stderr,
+    );
+  }
 
   if (one.status === 0) {
     const key = `${process.platform}-${process.arch}`;
