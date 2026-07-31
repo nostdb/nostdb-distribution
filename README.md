@@ -5,7 +5,7 @@ The unscoped `nostdb` npm package: a thin launcher for the verified native CLI a
 ```bash
 npm install --save-dev nostdb
 npm install --global nostdb
-npx --yes --package=nostdb@0.1.4 nostdb help
+npx --yes --package=nostdb@0.1.5 nostdb help
 ```
 
 Installing fetches the native archive for this platform from the release, verifies it against the

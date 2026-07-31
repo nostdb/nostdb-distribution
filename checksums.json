@@ -1,66 +1,66 @@
 {
   "checksums_version": 1,
-  "version": "0.1.4",
+  "version": "0.1.5",
   "note": "Digests of the artifacts this release publishes, written by the release assembly. 4 targets, 4 of 12 entries attested: an entry is attested when the binary was run and reported the product and version it should, which a cross-compiled target cannot do.",
   "artifacts": {
-    "nostdb-0.1.4-aarch64-apple-darwin.tar.gz": {
-      "bytes": 2601355,
-      "digest": "sha256:80b13c8c27a366fc19fce9048b325aa1dd0431b0d18ea9362490196a15400e8a",
+    "nostdb-0.1.5-aarch64-apple-darwin.tar.gz": {
+      "bytes": 2602324,
+      "digest": "sha256:92753df82fdbe64ddc665b2e13f38cefa372e794020a01810dc50313d2951ef5",
       "attested": true
     },
-    "nostdb-0.1.4-aarch64-apple-darwin.tar.gz#nostdb": {
-      "bytes": 3305744,
-      "digest": "sha256:c6a498ca2746ab1942ea57d38059ce743bfa2d75d1b7e279c5fb822a2228ac0e",
+    "nostdb-0.1.5-aarch64-apple-darwin.tar.gz#nostdb": {
+      "bytes": 3306288,
+      "digest": "sha256:3c904dd7adb0f44988af26f30fbc4927e188f3882616729daba21bd4041e4793",
       "attested": true
     },
-    "nostdb-0.1.4-aarch64-apple-darwin.tar.gz#nostdb-provider-github": {
-      "bytes": 2900784,
-      "digest": "sha256:63ad4a5ca7b3d8e42957bccc51613a7819a713a93277ed9332573747b047b2c3",
+    "nostdb-0.1.5-aarch64-apple-darwin.tar.gz#nostdb-provider-github": {
+      "bytes": 2900800,
+      "digest": "sha256:f438323ae90320528d1a37fce81522ae5c93cb8246a927be8be438f9619d2a09",
       "attested": false
     },
-    "nostdb-0.1.4-x86_64-apple-darwin.tar.gz": {
-      "bytes": 2777287,
-      "digest": "sha256:5bfeb10ddaf69017f4a0f19c4615b3fb93687f483509b24e22029ca5af79bc26",
+    "nostdb-0.1.5-x86_64-apple-darwin.tar.gz": {
+      "bytes": 2776158,
+      "digest": "sha256:f5148a98146c26715c984d4d2a1c31158423d3478759be46d5314fe4955bed70",
       "attested": false
     },
-    "nostdb-0.1.4-x86_64-apple-darwin.tar.gz#nostdb": {
-      "bytes": 3606648,
-      "digest": "sha256:01d5aa884193e6f150b658fa82a9ca5352f835a6fefeb513191d22a9bb41ac5a",
+    "nostdb-0.1.5-x86_64-apple-darwin.tar.gz#nostdb": {
+      "bytes": 3611112,
+      "digest": "sha256:72f0e0f6df6e0da4d71d53fb282125b6892fc87d58576126b98110dc22186663",
       "attested": false
     },
-    "nostdb-0.1.4-x86_64-apple-darwin.tar.gz#nostdb-provider-github": {
-      "bytes": 3049528,
-      "digest": "sha256:d2b5968f97e731235e9efd318bac27fb2939700e42c2c0ccf77b0d4b91d8421b",
+    "nostdb-0.1.5-x86_64-apple-darwin.tar.gz#nostdb-provider-github": {
+      "bytes": 3049504,
+      "digest": "sha256:b1274f9e7d4bb7ab9c70eb21317b5653f3d9f71e4fa67635edf78fb6a333c94a",
       "attested": false
     },
-    "nostdb-0.1.4-aarch64-unknown-linux-gnu.tar.gz": {
-      "bytes": 2780405,
-      "digest": "sha256:35e617755e378a2f78fd8041aa277f52732944685da23b2ab5e23b9c8d0be4b7",
+    "nostdb-0.1.5-aarch64-unknown-linux-gnu.tar.gz": {
+      "bytes": 2781521,
+      "digest": "sha256:70c938b4d545a3da930033a9b5e1fb8382b874666e54a47e84631b1e7759dbd3",
       "attested": false
     },
-    "nostdb-0.1.4-aarch64-unknown-linux-gnu.tar.gz#nostdb": {
-      "bytes": 3600648,
-      "digest": "sha256:38be6c2a1641be14fe521363709ee7eeadb9b6373c209691f4211813425d4f63",
+    "nostdb-0.1.5-aarch64-unknown-linux-gnu.tar.gz#nostdb": {
+      "bytes": 3601256,
+      "digest": "sha256:59aa9804458908fa6fda7e860c29773735ed4d897ee4951d92f97b0bd888ff25",
       "attested": false
     },
-    "nostdb-0.1.4-aarch64-unknown-linux-gnu.tar.gz#nostdb-provider-github": {
+    "nostdb-0.1.5-aarch64-unknown-linux-gnu.tar.gz#nostdb-provider-github": {
       "bytes": 3364648,
-      "digest": "sha256:ca63b698261244871f7abb8b02023f4661c43dfde0c0734ea691c1cf99f0686b",
+      "digest": "sha256:f7b7a8ec250ec058ec04cf10c42dadb91fcb7299be6cbb2e6c2b0db225f371af",
       "attested": false
     },
-    "nostdb-0.1.4-x86_64-unknown-linux-gnu.tar.gz": {
-      "bytes": 2887965,
-      "digest": "sha256:1611a2ec2e7dbc15509c3eebfcf4c1cf500b8bde4ddc9579aca211d3338ba25b",
+    "nostdb-0.1.5-x86_64-unknown-linux-gnu.tar.gz": {
+      "bytes": 2887825,
+      "digest": "sha256:eab944e88698a8790059f12089f7724a04b1022a692000ecd56be060ccbb8b95",
       "attested": true
     },
-    "nostdb-0.1.4-x86_64-unknown-linux-gnu.tar.gz#nostdb": {
-      "bytes": 3908040,
-      "digest": "sha256:98a328970247ebaa9f4730d5a5590109884da1261702b66a9fb901dcab500ca1",
+    "nostdb-0.1.5-x86_64-unknown-linux-gnu.tar.gz#nostdb": {
+      "bytes": 3910432,
+      "digest": "sha256:cfd0571114103804eb031fe4b713a7aa2d091d6c4c134ba66330cbb35251e779",
       "attested": true
     },
-    "nostdb-0.1.4-x86_64-unknown-linux-gnu.tar.gz#nostdb-provider-github": {
-      "bytes": 3449680,
-      "digest": "sha256:03b6ac4f0aedf1d13b3a0e1e7b4603e2aafb368f0b41bd49e421ad8c989eecce",
+    "nostdb-0.1.5-x86_64-unknown-linux-gnu.tar.gz#nostdb-provider-github": {
+      "bytes": 3449664,
+      "digest": "sha256:5a24c633cdfbb3e2fc651df8fd00e840bf8c2dc0721c5aeb44381a2ec85641b0",
       "attested": false
     }
   }
